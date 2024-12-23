@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -19,24 +19,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 interface NewCallDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (phoneNumber: string, libraryId: string) => Promise<void>;
+  onSubmit: (phoneNumber: string, libraryId: string, schedule?: Date) => Promise<void>;
+  libraries: { id: string; name: string }[];
 }
 
-export function NewCallDialog({ open, onOpenChange, onSubmit }: NewCallDialogProps) {
+export function NewCallDialog({ 
+  open, 
+  onOpenChange, 
+  onSubmit,
+  libraries 
+}: NewCallDialogProps) {
   const [phoneNumbers, setPhoneNumbers] = useState('');
-  const [message, setMessage] = useState('');
-  const [scheduleType, setScheduleType] = useState('now');
-  const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleTime, setScheduleTime] = useState('');
+  const [selectedLibrary, setSelectedLibrary] = useState('');
+  const [enableRedial, setEnableRedial] = useState(false);
+  const [redialInterval, setRedialInterval] = useState('5');
+  const [progress, setProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [enableSchedule, setEnableSchedule] = useState(false);
+  const [scheduleDateTime, setScheduleDateTime] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add your call scheduling logic here
-    onOpenChange(false);
+    setIsSubmitting(true);
+    setProgress(0);
+    
+    // Simulate progress
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
+    try {
+      const numbers = phoneNumbers.split(',').map(num => num.trim());
+      await onSubmit(
+        numbers.join(','), 
+        selectedLibrary,
+        enableSchedule ? new Date(scheduleDateTime) : undefined
+      );
+    } finally {
+      setIsSubmitting(false);
+      clearInterval(interval);
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -48,68 +82,94 @@ export function NewCallDialog({ open, onOpenChange, onSubmit }: NewCallDialogPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="phoneNumbers">Phone Numbers</Label>
-            <Textarea
+            <Input
               id="phoneNumbers"
-              placeholder="Enter phone numbers (one per line)"
+              placeholder="Enter comma-separated phone numbers"
               value={phoneNumbers}
               onChange={(e) => setPhoneNumbers(e.target.value)}
-              className="h-20"
               required
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="message">Message</Label>
-            <Textarea
-              id="message"
-              placeholder="Enter message to be spoken"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="h-20"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Schedule</Label>
+            <Label htmlFor="library">Select Library</Label>
             <Select
-              value={scheduleType}
-              onValueChange={setScheduleType}
+              value={selectedLibrary}
+              onValueChange={setSelectedLibrary}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select schedule type" />
+                <SelectValue placeholder="Select a library" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="now">Call Now</SelectItem>
-                <SelectItem value="schedule">Schedule for Later</SelectItem>
+                {libraries.map((library) => (
+                  <SelectItem key={library.id} value={library.id}>
+                    {library.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-          {scheduleType === 'schedule' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="time">Time</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                  required
-                />
-              </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="redial">Enable Redial</Label>
+            <Switch
+              id="redial"
+              checked={enableRedial}
+              onCheckedChange={setEnableRedial}
+            />
+          </div>
+
+          {enableRedial && (
+            <div className="space-y-2">
+              <Label htmlFor="redialInterval">Redial Interval</Label>
+              <Select
+                value={redialInterval}
+                onValueChange={setRedialInterval}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select interval" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 minutes</SelectItem>
+                  <SelectItem value="10">10 minutes</SelectItem>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="schedule">Schedule Call</Label>
+            <Switch
+              id="schedule"
+              checked={enableSchedule}
+              onCheckedChange={setEnableSchedule}
+            />
+          </div>
+
+          {enableSchedule && (
+            <div className="space-y-2">
+              <Label htmlFor="scheduleDateTime">Schedule Date & Time</Label>
+              <Input
+                id="scheduleDateTime"
+                type="datetime-local"
+                value={scheduleDateTime}
+                onChange={(e) => setScheduleDateTime(e.target.value)}
+                required={enableSchedule}
+              />
+            </div>
+          )}
+
+          {isSubmitting && (
+            <div className="space-y-2">
+              <Label>Processing</Label>
+              <Progress value={progress} />
+            </div>
+          )}
+
           <DialogFooter>
-            <Button type="submit">
-              {scheduleType === 'now' ? 'Start Call' : 'Schedule Call'}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Processing...' : 'Start Call'}
             </Button>
           </DialogFooter>
         </form>

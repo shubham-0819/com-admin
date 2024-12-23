@@ -63,6 +63,23 @@ interface DLRResponse {
     status: string;
 }
 
+function formatDeliveryTime(deliveryTime: string): string {
+  const deliveryDate = new Date(deliveryTime);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now.getTime() - deliveryDate.getTime()) / (1000 * 60));
+  
+  if (deliveryDate.toDateString() === now.toDateString()) {
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutes ago`;
+    } else {
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    }
+  }
+  
+  return deliveryDate.toLocaleTimeString();
+}
+
 function CallDetailsDialog({ call, open, onOpenChange }: { 
   call: CallRecord | null;
   open: boolean;
@@ -83,7 +100,7 @@ function CallDetailsDialog({ call, open, onOpenChange }: {
             <div className="font-semibold text-foreground">Status:</div>
             <div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                call.status === 'Failed' 
+                call.status === 'FAILED' 
                   ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
                   : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
               }`}>
@@ -121,6 +138,13 @@ export default function VoiceCallsPage() {
   const [showCallDetails, setShowCallDetails] = useState(false);
   const [fromDate, setFromDate] = useState(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [libraries, setLibraries] = useState<{ id: string; name: string }[]>([
+    { id: '1', name: 'Default Library' },
+    { id: '2', name: 'Welcome Message' },
+    { id: '3', name: 'Payment Reminder' },
+    { id: '4', name: 'Appointment Reminder' },
+    { id: '5', name: 'Emergency Alert' }
+  ]);
 
   // Fetch call reports when component mounts
   useEffect(() => {
@@ -217,7 +241,7 @@ export default function VoiceCallsPage() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-32 border-border"
+                className="w-40 border-border"
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -226,7 +250,7 @@ export default function VoiceCallsPage() {
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-32 border-border"
+                className="w-40 border-border"
               />
             </div>
           </div>
@@ -257,13 +281,15 @@ export default function VoiceCallsPage() {
 
       <div className="flex-1 overflow-auto border rounded-md border-border">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-background z-10 after:absolute after:left-0 after:right-0 after:bottom-0 after:border-b after:border-border">
             <TableRow className="border-border hover:bg-muted/50">
-              <TableHead className="text-foreground">Phone Number</TableHead>
-              <TableHead className="text-foreground">Status</TableHead>
-              <TableHead className="text-foreground">Duration</TableHead>
-              <TableHead className="text-foreground">Date</TableHead>
-              <TableHead className="text-foreground">Actions</TableHead>
+              <TableHead className="text-foreground py-2 h-8 bg-background">
+                Phone Number
+              </TableHead>
+              <TableHead className="text-foreground py-2 h-8 bg-background">Status</TableHead>
+              <TableHead className="text-foreground py-2 h-8 bg-background">Duration</TableHead>
+              <TableHead className="text-foreground py-2 h-8 bg-background">Date & Time</TableHead>
+              <TableHead className="text-foreground py-2 h-8 bg-background">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -285,19 +311,26 @@ export default function VoiceCallsPage() {
                     setShowCallDetails(true);
                   }}
                 >
-                  <TableCell className="text-foreground">{call.mobile}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-foreground py-2 h-10">{call.mobile}</TableCell>
+                  <TableCell className="py-2 h-10">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      call.status === 'Failed' 
+                      call.status === 'FAILED' 
                         ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
                         : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                     }`}>
                       {call.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-foreground">{call.duration || 'N/A'}</TableCell>
-                  <TableCell className="text-foreground">{call.date}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-foreground py-2 h-10">{call.duration || 'N/A'}</TableCell>
+                  <TableCell className="text-foreground py-2 h-10">
+                    <div className="flex flex-col">
+                      <span>{new Date(call.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDeliveryTime(call.deliveryTime)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2 h-10">
                     <Button 
                       variant="ghost" 
                       size="icon"
@@ -321,6 +354,7 @@ export default function VoiceCallsPage() {
         open={showNewCallDialog}
         onOpenChange={setShowNewCallDialog}
         onSubmit={handleNewCall}
+        libraries={libraries}
       />
       
       <CallDetailsDialog
