@@ -6,9 +6,18 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Bell, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    // Clear localStorage
+    localStorage.clear();
+    // Navigate to login page
+    router.push('/login');
+  };
 
   return (
     <div className="space-y-6">
@@ -70,7 +79,12 @@ export default function SettingsPage() {
             <CardTitle>Account</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="destructive">Sign Out</Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>

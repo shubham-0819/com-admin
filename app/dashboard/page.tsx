@@ -8,32 +8,69 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CallService } from '@/src/services/callService';
+import { SMSService } from '@/src/services/smsService';
 
-const stats = [
-  {
-    name: 'Total Voice Calls',
-    value: '2,345',
-    change: '+12.3%',
-    increasing: true,
-    icon: Phone,
-  },
-  {
-    name: 'Total SMS Sent',
-    value: '4,567',
-    change: '+8.2%',
-    increasing: true,
-    icon: MessageSquare,
-  },
-  {
-    name: 'Scheduled Tasks',
-    value: '123',
-    change: '-2.1%',
-    increasing: false,
-    icon: Calendar,
-  },
-];
+// Define an interface for our statistics
+interface StatData {
+  name: string;
+  value: string;
+  change: string;
+  increasing: boolean;
+  icon: any; // Using 'any' for brevity, but you might want to be more specific
+}
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<StatData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const callService = new CallService();
+        const smsService = new SMSService();
+
+        // Fetch actual data from services
+        const [callStats, smsStats] = await Promise.all([
+          callService.getCallStatistics(),
+          smsService.getSMSStatistics(),
+        ]);
+
+        const updatedStats = [
+          {
+            name: 'Total Voice Calls',
+            value: callStats.totalCalls.toString(),
+            change: `${callStats.percentageChange}%`,
+            increasing: callStats.percentageChange > 0,
+            icon: Phone,
+          },
+          {
+            name: 'Total SMS Sent',
+            value: smsStats.totalSMS.toString(),
+            change: `${smsStats.percentageChange}%`,
+            increasing: smsStats.percentageChange > 0,
+            icon: MessageSquare,
+          },
+        ];
+
+        setStats(updatedStats);
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+        // You might want to show an error message to the user
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return <div>Loading statistics...</div>; // Consider using a proper loading component
+  }
+
+  // Rest of the component remains the same
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>

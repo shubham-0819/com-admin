@@ -23,9 +23,10 @@ import {
 interface NewCallDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmit: (phoneNumber: string, libraryId: string) => Promise<void>;
 }
 
-export function NewCallDialog({ open, onOpenChange }: NewCallDialogProps) {
+export function NewCallDialog({ open, onOpenChange, onSubmit }: NewCallDialogProps) {
   const [phoneNumbers, setPhoneNumbers] = useState('');
   const [message, setMessage] = useState('');
   const [scheduleType, setScheduleType] = useState('now');
